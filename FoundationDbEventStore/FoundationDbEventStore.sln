@@ -5,6 +5,10 @@ VisualStudioVersion = 12.0.21005.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FoundationDbEventStore", "FoundationDbEventStore\FoundationDbEventStore.csproj", "{7289AFAE-A683-4595-8708-1FECC3EAF098}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FoundationDbEventStore.Tests", "FoundationDbEventStore.Tests\FoundationDbEventStore.Tests.csproj", "{B8D8B9C6-F439-49E9-A309-F0527CECA4EC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{6D413CE6-4FA8-435D-99B5-576DF789AD79}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,10 @@ Global
 		{7289AFAE-A683-4595-8708-1FECC3EAF098}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7289AFAE-A683-4595-8708-1FECC3EAF098}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7289AFAE-A683-4595-8708-1FECC3EAF098}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8D8B9C6-F439-49E9-A309-F0527CECA4EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8D8B9C6-F439-49E9-A309-F0527CECA4EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8D8B9C6-F439-49E9-A309-F0527CECA4EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8D8B9C6-F439-49E9-A309-F0527CECA4EC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
