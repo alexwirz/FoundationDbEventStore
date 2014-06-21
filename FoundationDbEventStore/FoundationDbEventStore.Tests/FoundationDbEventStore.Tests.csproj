@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="FoundationDb.cs" />
     <Compile Include="TestEvent.cs" />
+    <Compile Include="WhenReadingEvents.cs" />
     <Compile Include="WhenSavingEvents.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
