@@ -12,8 +12,8 @@ namespace FoundationDbEventStore
         private const string EventStorePath = "FoundationDbEventStore";
 
         private readonly IEnumerable<string> _directoryPath;
-        private readonly ICompositeKeyEncoder<Guid, int> _keyEncoder
-            = KeyValueEncoders.Tuples.CompositeKey<Guid, int>();
+        private readonly ICompositeKeyEncoder<Guid, long> _keyEncoder
+            = KeyValueEncoders.Tuples.CompositeKey<Guid, long>();
 
         public FoundationDbEventStore(IEnumerable<string> directoryPath)
         {
@@ -40,9 +40,10 @@ namespace FoundationDbEventStore
             using (var database = await Fdb.OpenAsync())
             {
                 var location = await GetLocationAsync(database, cancellationToken);
+                var version = await GetLastVersionAsync (saveEventsCommand.AggregateId, cancellationToken);
                 await database.WriteAsync((trans) =>
                 {
-                    var version = 0;
+                    
                     foreach (var item in saveEventsCommand.Events)
                     {
                         trans.Set(
@@ -54,11 +55,11 @@ namespace FoundationDbEventStore
             }       
         }
 
-        private async Task<FdbEncoderSubspace<Guid, int>> GetLocationAsync(
+        private async Task<FdbEncoderSubspace<Guid, long>> GetLocationAsync(
             IFdbDatabase database, CancellationToken cancellationToken)
         {
             var folder = await database.Directory.CreateOrOpenAsync(_directoryPath, cancellationToken);
-            return new FdbEncoderSubspace<Guid, int>(folder, _keyEncoder);
+            return new FdbEncoderSubspace<Guid, long>(folder, _keyEncoder);
         }
 
         public IEnumerable<Event> GetEventsForAggregate(Guid aggregateId)
@@ -85,6 +86,22 @@ namespace FoundationDbEventStore
         public IEnumerable<Event> GetEventsSinceVersion(Guid aggregateId, long version)
         {
             throw new NotImplementedException();
+        }
+
+        public long GetLastVersion(Guid aggregateId)
+        {
+            return GetLastVersionAsync (aggregateId, new CancellationToken ()).Result;
+        }
+
+        private async Task<long> GetLastVersionAsync(Guid aggregateId, CancellationToken cancellationToken)
+        {
+            Requires.Because("cancellationToken must not be null").That(cancellationToken).IsNotNull();
+            using (var database = await Fdb.OpenAsync())
+            {
+                var location = await GetLocationAsync(database, cancellationToken);
+                var range = FdbKeyRange.PrefixedBy(location.Pack<Guid> (aggregateId));
+                return await Fdb.System.EstimateCountAsync(database, range, cancellationToken);
+            }
         }
     }
 }
