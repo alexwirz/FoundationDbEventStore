@@ -1,10 +1,6 @@
 ﻿using NUnit.Framework;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace FoundationDbEventStore.Tests
 {
@@ -28,11 +24,10 @@ namespace FoundationDbEventStore.Tests
                 var saveEventsCommand = new SaveEventsCommand
                 {
                     AggregateId = _aggregateId,
-                    CancellationToken = new CancellationTokenSource().Token,
                     Events = _eventsExpectedToBeStored,
                     ExpectedVersion = 0
                 };
-                _eventStore.SaveEvents(saveEventsCommand).Wait ();
+                _eventStore.SaveEvents(saveEventsCommand);
             }
             catch (Exception exception)
             {

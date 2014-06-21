@@ -24,16 +24,22 @@ namespace FoundationDbEventStore
             _directoryPath = directoryPath;
         }
 
-        public async Task SaveEvents(SaveEventsCommand saveEventsCommand)
+        public void SaveEvents(SaveEventsCommand saveEventsCommand)
+        {
+            SaveEventsAsync(saveEventsCommand, new CancellationToken ()).Wait();
+        }
+
+        public async Task SaveEventsAsync(
+            SaveEventsCommand saveEventsCommand, CancellationToken cancellationToken)
         {
             Requires.Because("saveEventsCommand must not be null").That(saveEventsCommand).IsNotNull();
             Requires.Because("Collection with events to save must not be null").That(saveEventsCommand.Events).IsNotNull();
-            Requires.Because("CancellationToken must not be null").That(saveEventsCommand.CancellationToken).IsNotNull();
+            Requires.Because("cancellationToken must not be null").That(cancellationToken).IsNotNull();
             Requires.Because("expectedVersion must be a positive integer or 0").That(saveEventsCommand.ExpectedVersion >= 0);
 
             using (var database = await Fdb.OpenAsync())
             {
-                var location = await GetLocationAsync(database, saveEventsCommand.CancellationToken);
+                var location = await GetLocationAsync(database, cancellationToken);
                 await database.WriteAsync((trans) =>
                 {
                     var version = 0;
@@ -44,7 +50,7 @@ namespace FoundationDbEventStore
                             EventValueEncoding.Encode(item)
                         );
                     }
-                }, saveEventsCommand.CancellationToken);
+                }, cancellationToken);
             }       
         }
 

@@ -1,9 +1,6 @@
 ﻿using NUnit.Framework;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FoundationDbEventStore.Tests
 {
@@ -22,7 +19,7 @@ namespace FoundationDbEventStore.Tests
         {
             FoundationDb.RemoveDirectory(_testDirectoryPath);
             var eventStore = new FoundationDbEventStore(_testDirectoryPath);
-            eventStore.SaveEvents(new SaveEventsCommand { AggregateId = _aggregateId, CancellationToken = new System.Threading.CancellationToken(), Events = _expetedEvents, ExpectedVersion = 0 }).Wait();
+            eventStore.SaveEvents(new SaveEventsCommand { AggregateId = _aggregateId, Events = _expetedEvents, ExpectedVersion = 0 });
 
             try {
                 _actualEvents = eventStore.GetEventsForAggregate(_aggregateId);

@@ -11,7 +11,5 @@ namespace FoundationDbEventStore
         public IEnumerable<Event> Events { get; set; }
 
         public long ExpectedVersion { get; set; }
-
-        public CancellationToken CancellationToken { get; set; }
     }
 }
