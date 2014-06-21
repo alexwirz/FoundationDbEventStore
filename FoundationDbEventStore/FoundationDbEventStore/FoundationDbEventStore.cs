@@ -1,11 +1,7 @@
 ﻿using FoundationDB.Client;
-using FoundationDB.Layers.Tuples;
-using Newtonsoft.Json;
 using NGuard;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,6 +12,8 @@ namespace FoundationDbEventStore
         private const string EventStorePath = "FoundationDbEventStore";
 
         private readonly IEnumerable<string> _directoryPath;
+        private readonly ICompositeKeyEncoder<Guid, int> _keyEncoder
+            = KeyValueEncoders.Tuples.CompositeKey<Guid, int>();
 
         public FoundationDbEventStore(IEnumerable<string> directoryPath)
         {
@@ -37,21 +35,15 @@ namespace FoundationDbEventStore
             {
                 var folder = await db.Directory.CreateOrOpenAsync(
                     _directoryPath, saveEventsCommand.CancellationToken);                
-                var location = new FdbEncoderSubspace<Guid, int>(
-                    folder,
-                    KeyValueEncoders.Tuples.CompositeKey<Guid, int>()
-                );
-                Func<string, string, Slice> encoder = (t, j) => FdbTuple.Pack<string, string>(t, j);
+                var location = new FdbEncoderSubspace<Guid, int>(folder, _keyEncoder);
                 await db.WriteAsync((trans) =>
                 {
                     var version = 0;
                     foreach (var item in saveEventsCommand.Events)
                     {
-                        var typeName = item.GetType().AssemblyQualifiedName;
-                        var json = JsonConvert.SerializeObject(item);
                         trans.Set(
                             location.EncodeKey(saveEventsCommand.AggregateId, ++version),
-                            encoder(typeName, json)
+                            EventValueEncoding.Encode(item)
                         );
                     }
                 }, saveEventsCommand.CancellationToken);
@@ -69,33 +61,15 @@ namespace FoundationDbEventStore
             using (var db = await Fdb.OpenAsync())
             {
                 var folder = await db.Directory.CreateOrOpenAsync(_directoryPath, cancellationToken);
-                var location = new FdbEncoderSubspace<Guid, int>(
-                    folder,
-                    KeyValueEncoders.Tuples.CompositeKey<Guid, int>()
-                );
-                
+                var location = new FdbEncoderSubspace<Guid, int>(folder, _keyEncoder);                
                 return await db.QueryAsync(
                     (trans) => trans
                         .GetRange(FdbKeyRange.StartsWith(location.Partial.EncodeKey(aggregateId)))
-                        .Select(kv => Decode(kv.Value)),
+                        .Select(kv => EventValueEncoding.Decode(kv.Value)),
                     cancellationToken
                 );
             }
-        }
-
-        private Event Decode(Slice slice)
-        {
-            Console.WriteLine(slice);
-            var tuple = slice.ToTuple();
-            Console.WriteLine(tuple);
-            var typeName = tuple.Get<string>(0);
-            Console.WriteLine(typeName);
-            var json = tuple.Get<string>(1);
-            Console.WriteLine(json);
-            var e = (Event) JsonConvert.DeserializeObject(json, Type.GetType (typeName));
-            Console.WriteLine(e);
-            return e;
-        }
+        }        
 
         public IEnumerable<Event> GetEventsSinceVersion(Guid aggregateId, long version)
         {

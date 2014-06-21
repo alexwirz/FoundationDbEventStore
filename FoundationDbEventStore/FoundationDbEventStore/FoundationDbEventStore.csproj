@@ -49,6 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Event.cs" />
+    <Compile Include="EventValueEncoding.cs" />
     <Compile Include="FoundationDbEventStore.cs" />
     <Compile Include="IStoreEvents.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
