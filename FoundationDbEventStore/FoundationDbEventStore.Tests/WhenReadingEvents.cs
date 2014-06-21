@@ -25,7 +25,7 @@ namespace FoundationDbEventStore.Tests
             eventStore.SaveEvents(new SaveEventsCommand { AggregateId = _aggregateId, CancellationToken = new System.Threading.CancellationToken(), Events = _expetedEvents, ExpectedVersion = 0 }).Wait();
 
             try {
-            _actualEvents = eventStore.GetEventsForAggregate(_aggregateId);
+                _actualEvents = eventStore.GetEventsForAggregate(_aggregateId);
             }
             catch (Exception exception) {
                 _thrownException = exception;

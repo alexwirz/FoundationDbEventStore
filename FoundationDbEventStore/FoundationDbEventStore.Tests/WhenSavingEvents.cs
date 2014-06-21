@@ -11,6 +11,7 @@ namespace FoundationDbEventStore.Tests
     [TestFixture]
     public class WhenSavingEvents
     {
+        IStoreEvents _eventStore;
         private readonly IEnumerable<string> _testDirectoryPath = new[] { "FoundationDbEventStore", "Test" };
         private readonly Guid _aggregateId = Guid.NewGuid();
         private readonly IEnumerable<TestEvent> _eventsExpectedToBeStored
@@ -23,7 +24,7 @@ namespace FoundationDbEventStore.Tests
             FoundationDb.RemoveDirectory(_testDirectoryPath);
             try
             {
-                var eventStore = new FoundationDbEventStore(_testDirectoryPath);
+                _eventStore = new FoundationDbEventStore(_testDirectoryPath);
                 var saveEventsCommand = new SaveEventsCommand
                 {
                     AggregateId = _aggregateId,
@@ -31,7 +32,7 @@ namespace FoundationDbEventStore.Tests
                     Events = _eventsExpectedToBeStored,
                     ExpectedVersion = 0
                 };
-                eventStore.SaveEvents(saveEventsCommand).Wait ();
+                _eventStore.SaveEvents(saveEventsCommand).Wait ();
             }
             catch (Exception exception)
             {
@@ -46,9 +47,10 @@ namespace FoundationDbEventStore.Tests
         }
 
         [Test]
-        public void ThenAllEventsSaves()
+        public void ThenAllEventsSaved()
         {
-
+            var actualEvents = _eventStore.GetEventsForAggregate(_aggregateId);
+            CollectionAssert.AreEquivalent(_eventsExpectedToBeStored, actualEvents);
         }
     }
 }
