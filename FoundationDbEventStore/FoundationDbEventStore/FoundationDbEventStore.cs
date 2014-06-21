@@ -37,6 +37,7 @@ namespace FoundationDbEventStore
             Requires.Because("cancellationToken must not be null").That(cancellationToken).IsNotNull();
             Requires.Because("expectedVersion must be a positive integer or 0").That(saveEventsCommand.ExpectedVersion >= 0);
 
+            cancellationToken.ThrowIfCancellationRequested();
             using (var database = await Fdb.OpenAsync())
             {
                 var location = await GetLocationAsync(database, cancellationToken);
@@ -71,6 +72,7 @@ namespace FoundationDbEventStore
             Guid aggregateId, CancellationToken cancellationToken)
         {
             Requires.Because("cancellationToken must not be null").That(cancellationToken).IsNotNull();
+            cancellationToken.ThrowIfCancellationRequested();
             using (var database = await Fdb.OpenAsync())
             {
                 var location = await GetLocationAsync(database, cancellationToken);
@@ -96,6 +98,7 @@ namespace FoundationDbEventStore
         private async Task<long> GetLastVersionAsync(Guid aggregateId, CancellationToken cancellationToken)
         {
             Requires.Because("cancellationToken must not be null").That(cancellationToken).IsNotNull();
+            cancellationToken.ThrowIfCancellationRequested();
             using (var database = await Fdb.OpenAsync())
             {
                 var location = await GetLocationAsync(database, cancellationToken);
