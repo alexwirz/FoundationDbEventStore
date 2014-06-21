@@ -31,12 +31,10 @@ namespace FoundationDbEventStore
             Requires.Because("CancellationToken must not be null").That(saveEventsCommand.CancellationToken).IsNotNull();
             Requires.Because("expectedVersion must be a positive integer or 0").That(saveEventsCommand.ExpectedVersion >= 0);
 
-            using (var db = await Fdb.OpenAsync())
+            using (var database = await Fdb.OpenAsync())
             {
-                var folder = await db.Directory.CreateOrOpenAsync(
-                    _directoryPath, saveEventsCommand.CancellationToken);                
-                var location = new FdbEncoderSubspace<Guid, int>(folder, _keyEncoder);
-                await db.WriteAsync((trans) =>
+                var location = await GetLocationAsync(database, saveEventsCommand.CancellationToken);
+                await database.WriteAsync((trans) =>
                 {
                     var version = 0;
                     foreach (var item in saveEventsCommand.Events)
@@ -47,7 +45,14 @@ namespace FoundationDbEventStore
                         );
                     }
                 }, saveEventsCommand.CancellationToken);
-            }
+            }       
+        }
+
+        private async Task<FdbEncoderSubspace<Guid, int>> GetLocationAsync(
+            IFdbDatabase database, CancellationToken cancellationToken)
+        {
+            var folder = await database.Directory.CreateOrOpenAsync(_directoryPath, cancellationToken);
+            return new FdbEncoderSubspace<Guid, int>(folder, _keyEncoder);
         }
 
         public IEnumerable<Event> GetEventsForAggregate(Guid aggregateId)
@@ -55,14 +60,14 @@ namespace FoundationDbEventStore
             return GetEventsForAggregateAsync(aggregateId, new CancellationToken()).Result;
         }
 
-        public async Task<List<Event>> GetEventsForAggregateAsync(Guid aggregateId, CancellationToken cancellationToken)
+        public async Task<List<Event>> GetEventsForAggregateAsync(
+            Guid aggregateId, CancellationToken cancellationToken)
         {
             Requires.Because("cancellationToken must not be null").That(cancellationToken).IsNotNull();
-            using (var db = await Fdb.OpenAsync())
+            using (var database = await Fdb.OpenAsync())
             {
-                var folder = await db.Directory.CreateOrOpenAsync(_directoryPath, cancellationToken);
-                var location = new FdbEncoderSubspace<Guid, int>(folder, _keyEncoder);                
-                return await db.QueryAsync(
+                var location = await GetLocationAsync(database, cancellationToken);
+                return await database.QueryAsync(
                     (trans) => trans
                         .GetRange(FdbKeyRange.StartsWith(location.Partial.EncodeKey(aggregateId)))
                         .Select(kv => EventValueEncoding.Decode(kv.Value)),
