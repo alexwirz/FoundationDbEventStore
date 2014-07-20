@@ -41,7 +41,8 @@ namespace FoundationDbEventStore
             using (var database = await Fdb.OpenAsync())
             {
                 var location = await GetLocationAsync(database, cancellationToken);
-                var version = await GetLastVersionAsync (saveEventsCommand.AggregateId, cancellationToken);
+                var version = await GetLastVersionAsync(
+                    saveEventsCommand.AggregateId, database, location, cancellationToken);
                 await database.WriteAsync((trans) =>
                 {
                     
@@ -102,9 +103,15 @@ namespace FoundationDbEventStore
             using (var database = await Fdb.OpenAsync())
             {
                 var location = await GetLocationAsync(database, cancellationToken);
-                var range = FdbKeyRange.PrefixedBy(location.Pack<Guid> (aggregateId));
-                return await Fdb.System.EstimateCountAsync(database, range, cancellationToken);
+                return await GetLastVersionAsync(aggregateId, database, location, cancellationToken);
             }
+        }
+
+        private async Task<long> GetLastVersionAsync(Guid aggregateId, IFdbDatabase database,
+            FdbEncoderSubspace<Guid, long> location, CancellationToken cancellationToken)
+        {
+            var range = FdbKeyRange.PrefixedBy(location.Pack<Guid>(aggregateId));
+            return await Fdb.System.EstimateCountAsync(database, range, cancellationToken);
         }
     }
 }
