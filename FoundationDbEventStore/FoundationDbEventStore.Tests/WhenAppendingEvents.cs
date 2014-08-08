@@ -1,7 +1,9 @@
-﻿using NUnit.Framework;
+﻿using FoundationDB.Client;
+using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace FoundationDbEventStore.Tests
 {
@@ -15,30 +17,34 @@ namespace FoundationDbEventStore.Tests
             = new[] { new TestEvent(), new TestEvent() };
         private readonly IEnumerable<TestEvent> _alreadySavedEvents
             = new[] { new TestEvent { SomeData = "foo" }, new TestEvent { SomeData = "bar" } };
-        private Exception _thrownException;
+        private Exception _thrownException;        
 
-        public WhenAppendingEvents()
-        {
-            GivenEventStoreWithEvents(_alreadySavedEvents);
-        }
-
-        private void GivenEventStoreWithEvents(IEnumerable<TestEvent> _alreadySavedEvents)
+        private async Task GivenEventStoreWithEvents(IEnumerable<TestEvent> _alreadySavedEvents)
         {
             FoundationDb.RemoveDirectory(_testDirectoryPath);
-            _eventStore = new FoundationDbEventStore(_testDirectoryPath);
-            _eventStore.SaveEvents(new SaveEventsCommand { AggregateId = _aggregateId, ExpectedVersion = 0, Events = _alreadySavedEvents });
+            using (var database = await Fdb.OpenAsync())
+            {
+                _eventStore = new FoundationDbEventStore(database, _testDirectoryPath);
+                _eventStore.SaveEvents(new SaveEventsCommand { AggregateId = _aggregateId, ExpectedVersion = 0, Events = _alreadySavedEvents });
+            }
         }
 
         [TestFixtureSetUp]
-        public void When()
-        {            
+        public async Task When()
+        {
+            await GivenEventStoreWithEvents(_alreadySavedEvents);
+            TrySaveMoreEvents();
+        }
+
+        private void TrySaveMoreEvents()
+        {
             try
-            {                
+            {
                 var saveEventsCommand = new SaveEventsCommand
                 {
                     AggregateId = _aggregateId,
                     Events = _eventsExpectedToBeStored,
-                    ExpectedVersion = _alreadySavedEvents.LongCount ()
+                    ExpectedVersion = _alreadySavedEvents.LongCount()
                 };
                 _eventStore.SaveEvents(saveEventsCommand);
             }

@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using FoundationDB.Client;
+using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,33 +14,35 @@ namespace FoundationDbEventStore.Tests
         private readonly IEnumerable<string> _testDirectoryPath = new[] { "FoundationDbEventStore", "Test" };
 
         [Test]
-        public void WhenNoEventsStoredForAggregateThenLastVersionIs0()
-        {
-            var eventStore = EmptyEventStore();
-            var lastVersion = eventStore.GetLastVersion(Guid.NewGuid());
-            Assert.AreEqual(0, lastVersion);
-        }
-
-        private FoundationDbEventStore EmptyEventStore()
+        public async Task WhenNoEventsStoredForAggregateThenLastVersionIs0()
         {
             FoundationDb.RemoveDirectory(_testDirectoryPath);
-            return new FoundationDbEventStore(_testDirectoryPath);
+            using (var database = await Fdb.OpenAsync())
+            {
+                var eventStore = new FoundationDbEventStore(database, _testDirectoryPath);
+                var lastVersion = eventStore.GetLastVersion(Guid.NewGuid());
+                Assert.AreEqual(0, lastVersion);
+            }
         }
 
         [Test]
-        public void WhenSomeEventsStoredForAggregateThenLastVersionIsNumberOfStoredEvents ()
+        public async Task WhenSomeEventsStoredForAggregateThenLastVersionIsNumberOfStoredEvents ()
         {
+            FoundationDb.RemoveDirectory(_testDirectoryPath);
             var aggregateId = Guid.NewGuid ();
             var events = new[] { new TestEvent(), new TestEvent() };
-            var eventStore = EmptyEventStore();
-            eventStore.SaveEvents(new SaveEventsCommand
+            using (var database = await Fdb.OpenAsync())
             {
-                AggregateId = aggregateId,
-                Events = events,
-                ExpectedVersion = 0
-            });
-            var lastVersion = eventStore.GetLastVersion(aggregateId);
-            Assert.AreEqual(events.LongCount (), lastVersion);
+                var eventStore = new FoundationDbEventStore(database, _testDirectoryPath);
+                eventStore.SaveEvents(new SaveEventsCommand
+                {
+                    AggregateId = aggregateId,
+                    Events = events,
+                    ExpectedVersion = 0
+                });
+                var lastVersion = eventStore.GetLastVersion(aggregateId);
+                Assert.AreEqual(events.LongCount(), lastVersion);
+            }
         }
     }
 }

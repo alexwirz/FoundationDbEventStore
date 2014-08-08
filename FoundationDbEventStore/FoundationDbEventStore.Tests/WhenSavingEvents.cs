@@ -1,6 +1,8 @@
-﻿using NUnit.Framework;
+﻿using FoundationDB.Client;
+using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace FoundationDbEventStore.Tests
 {
@@ -15,23 +17,26 @@ namespace FoundationDbEventStore.Tests
         private Exception _thrownException;
 
         [TestFixtureSetUp]
-        public void When()
+        public async Task When()
         {
             FoundationDb.RemoveDirectory(_testDirectoryPath);
-            try
+            using (var database = await Fdb.OpenAsync())
             {
-                _eventStore = new FoundationDbEventStore(_testDirectoryPath);
-                var saveEventsCommand = new SaveEventsCommand
+                try
                 {
-                    AggregateId = _aggregateId,
-                    Events = _eventsExpectedToBeStored,
-                    ExpectedVersion = 0
-                };
-                _eventStore.SaveEvents(saveEventsCommand);
-            }
-            catch (Exception exception)
-            {
-                _thrownException = exception;
+                    _eventStore = new FoundationDbEventStore(database, _testDirectoryPath);
+                    var saveEventsCommand = new SaveEventsCommand
+                    {
+                        AggregateId = _aggregateId,
+                        Events = _eventsExpectedToBeStored,
+                        ExpectedVersion = 0
+                    };
+                    _eventStore.SaveEvents(saveEventsCommand);
+                }
+                catch (Exception exception)
+                {
+                    _thrownException = exception;
+                }
             }
         }
 

@@ -11,22 +11,25 @@ namespace FoundationDbEventStore
     {
         private const string EventStorePath = "FoundationDbEventStore";
 
+        private readonly IFdbDatabase _database;
         private readonly IEnumerable<string> _directoryPath;
         private readonly ICompositeKeyEncoder<Guid, long> _keyEncoder
             = KeyValueEncoders.Tuples.CompositeKey<Guid, long>();
 
-        public FoundationDbEventStore(IEnumerable<string> directoryPath)
+        public FoundationDbEventStore(IFdbDatabase database, IEnumerable<string> directoryPath)
         {
+            Requires.That(database != null);
             Requires.Because("directoryPath must not be null")
                 .That(directoryPath).IsNotNull();
             Requires.Because("directoryPath must contain at least one directory name")
                 .ThatCollection(directoryPath).IsNotEmpty();
+            _database = database;
             _directoryPath = directoryPath;
         }
 
         public void SaveEvents(SaveEventsCommand saveEventsCommand)
         {
-            SaveEventsAsync(saveEventsCommand, new CancellationToken ()).Wait();
+            SaveEventsAsync(saveEventsCommand, new CancellationToken()).Wait();
         }
 
         public async Task SaveEventsAsync(
@@ -38,23 +41,19 @@ namespace FoundationDbEventStore
             Requires.Because("expectedVersion must be a positive integer or 0").That(saveEventsCommand.ExpectedVersion >= 0);
 
             cancellationToken.ThrowIfCancellationRequested();
-            using (var database = await Fdb.OpenAsync())
+            var location = await GetLocationAsync(_database, cancellationToken);
+            var version = await GetLastVersionAsync(
+                saveEventsCommand.AggregateId, _database, location, cancellationToken);
+            await _database.WriteAsync((trans) =>
             {
-                var location = await GetLocationAsync(database, cancellationToken);
-                var version = await GetLastVersionAsync(
-                    saveEventsCommand.AggregateId, database, location, cancellationToken);
-                await database.WriteAsync((trans) =>
+                foreach (var item in saveEventsCommand.Events)
                 {
-                    
-                    foreach (var item in saveEventsCommand.Events)
-                    {
-                        trans.Set(
-                            location.EncodeKey(saveEventsCommand.AggregateId, ++version),
-                            EventValueEncoding.Encode(item)
-                        );
-                    }
-                }, cancellationToken);
-            }       
+                    trans.Set(
+                        location.EncodeKey(saveEventsCommand.AggregateId, ++version),
+                        EventValueEncoding.Encode(item)
+                    );
+                }
+            }, cancellationToken);
         }
 
         private async Task<FdbEncoderSubspace<Guid, long>> GetLocationAsync(
@@ -74,17 +73,14 @@ namespace FoundationDbEventStore
         {
             Requires.Because("cancellationToken must not be null").That(cancellationToken).IsNotNull();
             cancellationToken.ThrowIfCancellationRequested();
-            using (var database = await Fdb.OpenAsync())
-            {
-                var location = await GetLocationAsync(database, cancellationToken);
-                return await database.QueryAsync(
-                    (trans) => trans
-                        .GetRange(FdbKeyRange.StartsWith(location.Partial.EncodeKey(aggregateId)))
-                        .Select(kv => EventValueEncoding.Decode(kv.Value)),
-                    cancellationToken
-                );
-            }
-        }        
+            var location = await GetLocationAsync(_database, cancellationToken);
+            return await _database.QueryAsync(
+                (trans) => trans
+                    .GetRange(FdbKeyRange.StartsWith(location.Partial.EncodeKey(aggregateId)))
+                    .Select(kv => EventValueEncoding.Decode(kv.Value)),
+                cancellationToken
+            );
+        }
 
         public IEnumerable<Event> GetEventsSinceVersion(Guid aggregateId, long version)
         {
@@ -93,18 +89,15 @@ namespace FoundationDbEventStore
 
         public long GetLastVersion(Guid aggregateId)
         {
-            return GetLastVersionAsync (aggregateId, new CancellationToken ()).Result;
+            return GetLastVersionAsync(aggregateId, new CancellationToken()).Result;
         }
 
         private async Task<long> GetLastVersionAsync(Guid aggregateId, CancellationToken cancellationToken)
         {
             Requires.Because("cancellationToken must not be null").That(cancellationToken).IsNotNull();
             cancellationToken.ThrowIfCancellationRequested();
-            using (var database = await Fdb.OpenAsync())
-            {
-                var location = await GetLocationAsync(database, cancellationToken);
-                return await GetLastVersionAsync(aggregateId, database, location, cancellationToken);
-            }
+            var location = await GetLocationAsync(_database, cancellationToken);
+            return await GetLastVersionAsync(aggregateId, _database, location, cancellationToken);
         }
 
         private async Task<long> GetLastVersionAsync(Guid aggregateId, IFdbDatabase database,
