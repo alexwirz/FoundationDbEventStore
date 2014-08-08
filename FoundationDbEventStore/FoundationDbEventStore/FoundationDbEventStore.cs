@@ -37,18 +37,27 @@ namespace FoundationDbEventStore
 
             cancellationToken.ThrowIfCancellationRequested();
             var location = await GetLocationAsync(_database, cancellationToken);
-            var version = await GetLastVersionAsync(
-                saveEventsCommand.AggregateId, _database, location, cancellationToken);
-            await _database.WriteAsync((trans) =>
+            await _database.WriteAsync(
+                (trans) => TryWriteEvents(trans, location, saveEventsCommand), cancellationToken);
+        }
+
+        private async Task TryWriteEvents(
+            IFdbTransaction transaction, FdbEncoderSubspace<Guid, long> location, SaveEventsCommand command)
+        {
+            var nextVersion = command.ExpectedVersion + 1;
+            var nextKey = location.EncodeKey(command.AggregateId, nextVersion);
+            await ThrowIfAlreadyHasKey(transaction, nextKey);
+            foreach (var item in command.Events)
             {
-                foreach (var item in saveEventsCommand.Events)
-                {
-                    trans.Set(
-                        location.EncodeKey(saveEventsCommand.AggregateId, ++version),
-                        EventValueEncoding.Encode(item)
-                    );
-                }
-            }, cancellationToken);
+                transaction.Set(nextKey, EventValueEncoding.Encode(item));
+                nextKey = location.EncodeKey(command.AggregateId, ++nextVersion);
+            }
+        }
+
+        private async Task ThrowIfAlreadyHasKey(IFdbTransaction transaction, Slice key)
+        {
+            var maybeValue = await transaction.Snapshot.GetAsync(key);
+            if (maybeValue.IsPresent) throw new Exception("TODO!");
         }
 
         private async Task<FdbEncoderSubspace<Guid, long>> GetLocationAsync(
@@ -75,26 +84,6 @@ namespace FoundationDbEventStore
         public async Task<IEnumerable<Event>> GetEventsSinceVersionAsync (Guid aggregateId, long version, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
-        }
-
-        public long GetLastVersion(Guid aggregateId)
-        {
-            return GetLastVersionAsync(aggregateId, new CancellationToken()).Result;
-        }
-
-        private async Task<long> GetLastVersionAsync(Guid aggregateId, CancellationToken cancellationToken)
-        {
-            Requires.Because("cancellationToken must not be null").That(cancellationToken).IsNotNull();
-            cancellationToken.ThrowIfCancellationRequested();
-            var location = await GetLocationAsync(_database, cancellationToken);
-            return await GetLastVersionAsync(aggregateId, _database, location, cancellationToken);
-        }
-
-        private async Task<long> GetLastVersionAsync(Guid aggregateId, IFdbDatabase database,
-            FdbEncoderSubspace<Guid, long> location, CancellationToken cancellationToken)
-        {
-            var range = FdbKeyRange.PrefixedBy(location.Pack<Guid>(aggregateId));
-            return await Fdb.System.EstimateCountAsync(database, range, cancellationToken);
         }
     }
 }

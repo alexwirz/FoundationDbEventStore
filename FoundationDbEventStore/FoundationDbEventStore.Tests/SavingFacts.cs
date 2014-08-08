@@ -13,7 +13,7 @@ namespace FoundationDbEventStore.Tests
     {
         private readonly IEnumerable<string> _testDirectoryPath = new[] { "FoundationDbEventStore", "Test" };
 
-        [TestFixtureSetUp]
+        [SetUp]
         public void ClearTestDirectory()
         {
             FoundationDb.RemoveDirectory(_testDirectoryPath);
@@ -61,7 +61,7 @@ namespace FoundationDbEventStore.Tests
                 {
                     AggregateId = aggregateId,
                     Events = eventsExpectedToBeStored,
-                    ExpectedVersion = 0
+                    ExpectedVersion = alreadySavedEvents.Count()
                 };
                 await eventStore.SaveEventsAsync (saveEventsCommand, CancellationToken.None);
 
