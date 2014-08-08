@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace FoundationDbEventStore.Tests
@@ -34,10 +35,10 @@ namespace FoundationDbEventStore.Tests
                     Events = storedEvents,
                     ExpectedVersion = 0
                 };
-                eventStore.SaveEvents(saveEventsCommand);
+                await eventStore.SaveEventsAsync (saveEventsCommand, CancellationToken.None);
 
                 // act:
-                var actualEvents = eventStore.GetEventsForAggregate(aggregateId);
+                var actualEvents = await eventStore.GetEventsForAggregateAsync (aggregateId, CancellationToken.None);
 
                 // assert:                
                 CollectionAssert.AreEquivalent(storedEvents, actualEvents);

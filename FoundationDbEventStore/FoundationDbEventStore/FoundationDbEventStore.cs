@@ -27,11 +27,6 @@ namespace FoundationDbEventStore
             _directoryPath = directoryPath;
         }
 
-        public void SaveEvents(SaveEventsCommand saveEventsCommand)
-        {
-            SaveEventsAsync(saveEventsCommand, new CancellationToken()).Wait();
-        }
-
         public async Task SaveEventsAsync(
             SaveEventsCommand saveEventsCommand, CancellationToken cancellationToken)
         {
@@ -63,11 +58,6 @@ namespace FoundationDbEventStore
             return new FdbEncoderSubspace<Guid, long>(folder, _keyEncoder);
         }
 
-        public IEnumerable<Event> GetEventsForAggregate(Guid aggregateId)
-        {
-            return GetEventsForAggregateAsync(aggregateId, new CancellationToken()).Result;
-        }
-
         public async Task<List<Event>> GetEventsForAggregateAsync(
             Guid aggregateId, CancellationToken cancellationToken)
         {
@@ -82,7 +72,7 @@ namespace FoundationDbEventStore
             );
         }
 
-        public IEnumerable<Event> GetEventsSinceVersion(Guid aggregateId, long version)
+        public async Task<IEnumerable<Event>> GetEventsSinceVersionAsync (Guid aggregateId, long version, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }

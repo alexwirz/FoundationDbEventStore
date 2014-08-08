@@ -3,6 +3,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace FoundationDbEventStore.Tests
@@ -35,10 +36,10 @@ namespace FoundationDbEventStore.Tests
                     Events = eventsExpectedToBeStored,
                     ExpectedVersion = 0
                 };
-                eventStore.SaveEvents(saveEventsCommand);
+                await eventStore.SaveEventsAsync (saveEventsCommand, CancellationToken.None);
 
                 // assert:
-                var actualEvents = eventStore.GetEventsForAggregate(aggregateId);
+                var actualEvents = await eventStore.GetEventsForAggregateAsync (aggregateId, CancellationToken.None);
                 CollectionAssert.AreEquivalent(eventsExpectedToBeStored, actualEvents);
             }
         }
@@ -53,7 +54,7 @@ namespace FoundationDbEventStore.Tests
             {
                 // arrange
                 var eventStore = new FoundationDbEventStore(database, _testDirectoryPath);
-                eventStore.SaveEvents(new SaveEventsCommand { AggregateId = aggregateId, ExpectedVersion = 0, Events = alreadySavedEvents });
+                await eventStore.SaveEventsAsync (new SaveEventsCommand { AggregateId = aggregateId, ExpectedVersion = 0, Events = alreadySavedEvents }, CancellationToken.None);
 
                 // act:
                 var saveEventsCommand = new SaveEventsCommand
@@ -62,11 +63,11 @@ namespace FoundationDbEventStore.Tests
                     Events = eventsExpectedToBeStored,
                     ExpectedVersion = 0
                 };
-                eventStore.SaveEvents(saveEventsCommand);
+                await eventStore.SaveEventsAsync (saveEventsCommand, CancellationToken.None);
 
                 // assert:
                 var expectedEvents = alreadySavedEvents.Concat(eventsExpectedToBeStored);
-                var actualEvents = eventStore.GetEventsForAggregate(aggregateId);
+                var actualEvents = await eventStore.GetEventsForAggregateAsync (aggregateId, CancellationToken.None);
                 CollectionAssert.AreEquivalent(expectedEvents, actualEvents);
             }
         }

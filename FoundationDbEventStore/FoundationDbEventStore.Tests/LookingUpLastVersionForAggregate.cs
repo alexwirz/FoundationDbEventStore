@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace FoundationDbEventStore.Tests
@@ -34,12 +35,12 @@ namespace FoundationDbEventStore.Tests
             using (var database = await Fdb.OpenAsync())
             {
                 var eventStore = new FoundationDbEventStore(database, _testDirectoryPath);
-                eventStore.SaveEvents(new SaveEventsCommand
+                await eventStore.SaveEventsAsync (new SaveEventsCommand
                 {
                     AggregateId = aggregateId,
                     Events = events,
                     ExpectedVersion = 0
-                });
+                }, CancellationToken.None);
                 var lastVersion = eventStore.GetLastVersion(aggregateId);
                 Assert.AreEqual(events.LongCount(), lastVersion);
             }
