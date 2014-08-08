@@ -48,11 +48,10 @@
   <ItemGroup>
     <Compile Include="FoundationDb.cs" />
     <Compile Include="LookingUpLastVersionForAggregate.cs" />
-    <Compile Include="WhenAppendingEvents.cs" />
-    <Compile Include="WhenEncodingEvents.cs" />
+    <Compile Include="ReadingFacts.cs" />
+    <Compile Include="SavingFacts.cs" />
+    <Compile Include="EncodingFacts.cs" />
     <Compile Include="TestEvent.cs" />
-    <Compile Include="WhenReadingEvents.cs" />
-    <Compile Include="WhenSavingEvents.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
