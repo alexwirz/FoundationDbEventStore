@@ -2,6 +2,7 @@
 using NGuard;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -37,6 +38,7 @@ namespace FoundationDbEventStore
 
             cancellationToken.ThrowIfCancellationRequested();
             var location = await GetLocationAsync(_database, cancellationToken);
+            // TODO: no retry loop
             await _database.WriteAsync(
                 (trans) => TryWriteEvents(trans, location, saveEventsCommand), cancellationToken);
         }
@@ -74,7 +76,7 @@ namespace FoundationDbEventStore
             cancellationToken.ThrowIfCancellationRequested();
             var location = await GetLocationAsync(_database, cancellationToken);
             return await _database.QueryAsync(
-                (trans) => trans
+                (transaction) => transaction
                     .GetRange(FdbKeyRange.StartsWith(location.Partial.EncodeKey(aggregateId)))
                     .Select(kv => EventValueEncoding.Decode(kv.Value)),
                 cancellationToken
@@ -83,7 +85,19 @@ namespace FoundationDbEventStore
 
         public async Task<IEnumerable<Event>> GetEventsSinceVersionAsync (Guid aggregateId, long version, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            Requires.Because("Version must be greater than 0").That(version > 0);
+            Requires.Because("cancellationToken must not be null").That(cancellationToken).IsNotNull();
+            cancellationToken.ThrowIfCancellationRequested();
+            var location = await GetLocationAsync(_database, cancellationToken);
+            var versionKey = location.EncodeKey(aggregateId, version);
+            var sliceSinceVersion = await _database.GetAsync(versionKey, cancellationToken);
+            var result = await _database.QueryAsync(
+                (transaction) => transaction
+                    .GetRange(FdbKeyRange.StartsWith(location.Partial.EncodeKey(aggregateId)))
+                    .Where(kv => location.DecodeKey(kv.Key).Item2 >= version),
+                cancellationToken
+            );
+            return result.Select(kv => EventValueEncoding.Decode(kv.Value));
         }
     }
 }
