@@ -38,9 +38,11 @@ namespace FoundationDbEventStore
 
             cancellationToken.ThrowIfCancellationRequested();
             var location = await GetLocationAsync(_database, cancellationToken);
-            // TODO: no retry loop
-            await _database.WriteAsync(
-                (trans) => TryWriteEvents(trans, location, saveEventsCommand), cancellationToken);
+            using (var transaction = _database.BeginTransaction(FdbTransactionMode.Default, cancellationToken))
+            {
+                await TryWriteEvents(transaction, location, saveEventsCommand);
+                await transaction.CommitAsync();
+            }
         }
 
         private async Task TryWriteEvents(
