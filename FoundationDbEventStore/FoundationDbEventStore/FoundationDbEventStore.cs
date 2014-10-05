@@ -56,7 +56,7 @@ namespace FoundationDbEventStore
 
         private async Task ThrowIfAlreadyHasKey(IFdbTransaction transaction, Slice key)
         {
-            var maybeValue = await transaction.Snapshot.GetAsync(key);
+            var maybeValue = await transaction.GetAsync(key);
             if (maybeValue.IsPresent) throw new Exception("TODO!");
         }
 
